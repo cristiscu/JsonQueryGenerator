@@ -1,0 +1,16 @@
+﻿{
+  "OrderId": 123456,
+  "CustomAttributes": {
+    "CustomAttribute": [{
+        "Name": "kount_CountersTriggered",
+        "Value": "1"
+      },{
+        "Name": "MonerisCreditCardNumber",
+        "Value": "************6945"
+      },{
+        "Name": "backorder",
+        "Value": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+﻿{
+  "fullName": "Johnny Appleseed",
+  "age": 42,
+  "gender": "Male",
+  "phoneNumber": {
+    "areaCode": 415,
+    "subscriberNumber": 5551234
+  },
+  "children": [
+    { "name": "Jayden", "gender": "Male", "age": 10 },
+    { "name": "Emma", "gender": "Female", "age": 8 },
+    { "name": "Madelyn", "gender": "Female", "age": 6 }
+  ],
+  "citiesLived": [{ "cityName": "London",
+      "yearsLived": [ 1989, 1993, 1998, 2002 ]
+    },{
+    "cityName": "San Francisco",
+      "yearsLived": [ 1990, 1993, 1998, 2008 ]
+    },{
+    "cityName": "Portland",
+      "yearsLived": [ 1993, 1998, 2003, 2005 ]
+    },{
+    "cityName": "Austin",
+      "yearsLived": [ 1973, 1998, 2001, 2005 ]
+    }
+  ]
+}

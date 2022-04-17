@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net5.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>XtractPro.Utils.JsonQueryGenerator</AssemblyName>
+    <RootNamespace>XtractPro.Utils.JsonParser</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="files\Car Owners.json" />
+    <None Remove="files\Custom Attributes.json" />
+    <None Remove="files\Person Profile.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Snowflake.Data" Version="2.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="files\Car Owners.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\Custom Attributes.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\Person Profile.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
