@@ -16,21 +16,27 @@ namespace XtractPro.Utils.JsonQueryGenerator
             "First array object property",
             "LATERAL FLATTEN first array",
             "LATERAL FLATTEN first array + LISTAGG to combine back",
+            "LATERAL FLATTEN first two arrays",
+            "TABLE FLATTEN first array",
+            "TABLE FLATTEN first array RECURSIVE",
         };
 
         public QueryGenerator() { }
 
         public string GetQuery(string json, string queryType)
-            => string.IsNullOrEmpty(json) ? ""
+            => string.IsNullOrEmpty(json) ? "-- [ERROR] must use non-empty JSON!"
             : queryType == QueryTypes[1] ? GetSingleParseJsonQuery(json)
             : queryType == QueryTypes[2] ? GetSingleObjectConstructQuery(JToken.Parse(json))
             : queryType == QueryTypes[3] ? GetMultiObjectConstructQuery(JToken.Parse(json))
-            : queryType == QueryTypes[4] ? GetFirstArrayQuery(json, false)
-            : queryType == QueryTypes[5] ? GetFirstArrayQuery(json, false, true)
-            : queryType == QueryTypes[6] ? GetFirstArrayQuery(json, false, true, false, true)
-            : queryType == QueryTypes[7] ? GetFirstArrayQuery(json, true)
-            : queryType == QueryTypes[8] ? GetFirstArrayQuery(json, true, false, true)
-            : "";
+            : queryType == QueryTypes[4] ? GetArrayQuery(json, new QueryOptions())
+            : queryType == QueryTypes[5] ? GetArrayQuery(json, new QueryOptions() { retElement = true })
+            : queryType == QueryTypes[6] ? GetArrayQuery(json, new QueryOptions() { retElement = true, retProperty = true })
+            : queryType == QueryTypes[7] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true })
+            : queryType == QueryTypes[8] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callListAgg = true })
+            : queryType == QueryTypes[9] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, twoArrays = true })
+            : queryType == QueryTypes[10] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true })
+            : queryType == QueryTypes[11] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useRecursive = true })
+            : "-- [ERROR] query type not found!";
 
         private string ToSqlValue(JValue value)
             => value.Type == JTokenType.String ? $"'{value.ToString().Replace("'", "''")}'"
@@ -106,81 +112,123 @@ namespace XtractPro.Utils.JsonQueryGenerator
             return sb.ToString();
         }
 
-        private string GetFirstArrayQuery(string json, bool flatten, 
-            bool element = false, bool agg = false, bool prop = false)
+        private string MakePath(string pathJson, int skip = 0)
         {
-            // find path to first array
-            var array = GetFirstArray(JToken.Parse(json)) as JArray;
-            if (array == null
-                || element && array.Count == 0
-                || prop && (array[0] is not JObject obj || obj.Properties().ToList().Count == 0))
-                return "";
-
-            // quote names
-            var parts = array.Path.Split('.');
-            for (var i = 0; i < parts.Length; i++) parts[i] = $"\"{parts[i]}\"";
-
-            // make full path
-            var field = "";
-            for (var i = 0; i < parts.Length; i++) field += (i == 0 ? "" : ".") + parts[i];
-
-            // return query
             var sb = new StringBuilder();
-            sb.AppendLine("-- top CTE with one single data entry as an inline JSON object");
-            sb.AppendLine($"with src as (");
-            sb.AppendLine($"  select parse_json('{json.Replace("'", "''")}') as json){(agg ? "," : "")}");
-            sb.AppendLine();
+            var parts = pathJson.Split('.');
+            for (var i = 0; i < parts.Length; i++)
+                if (i >= skip)
+                    sb.Append($"{(sb.Length == 0 ? "" : ".")}\"{parts[i]}\"");
+            return sb.ToString();
+        }
 
-            var elem = element ? "[0]" : "";
-            if (flatten && agg)
-            {
-                sb.AppendLine("-- CTE with one row for each element of the first JSON array");
-                sb.AppendLine($"arr as (");
-                sb.AppendLine($"  select elem.value as {parts[^1]}");
-                sb.AppendLine($"  from src, lateral flatten(");
-                sb.AppendLine($"    input => json:{field}{elem}) as elem)");
-                sb.AppendLine();
+        private string GetArrayQuery(string json, QueryOptions opt)
+        {
+            // find first array, with path
+            var array = GetFirstArray(JToken.Parse(json)) as JArray;
+            if (array == null)
+                return "-- [ERROR] must use JSON with at least one array!";
+            if (opt.retElement && array.Count == 0)
+                return "-- [ERROR] must use JSON with at least one non-empty array!";
+            if (opt.retProperty && (array[0] is not JObject obj || obj.Properties().ToList().Count == 0))
+                return "-- [ERROR] must use JSON with at least one non-empty object array!";
 
-                sb.AppendLine("-- LISTAGG combines all rows in a single comma-separated list");
-                sb.AppendLine($"select '[ ' || listagg({parts[^1]}, ', ') || ' ]' as agg");
-                sb.Append($"from arr;");
-            }
-            else if (flatten)
+            var path = MakePath(array.Path);
+            var alias = path.Split('.')[^1];
+            var index = opt.retElement ? "[0]" : "";
+            var rec = opt.useRecursive ? ", recursive => true" : "";
+
+            // generate SQL query
+            var sb = new StringBuilder();
+            if (opt.callFlatten && opt.callTable)
             {
                 sb.AppendLine("-- returns one row for each element of the first JSON array");
-                sb.AppendLine($"select elem.value as {parts[^1]}");
-                sb.AppendLine($"from src, lateral flatten(");
-                sb.Append($"  input => json:{field}{elem}) as elem;");
-            }
-            else if (prop)
-            {
-                var propName = $"\"{(array[0] as JObject).Properties().ToList()[0].Name}\"";
-                sb.AppendLine("-- returns the first property value of the first JSON object of the first JSON array");
-                sb.AppendLine($"select json:{field}{elem}.{propName} as {propName}");
-                sb.Append($"from src;");
+                sb.AppendLine("-- (use embedded PARSE_JSON to call with TABLE instead of LATERAL!)");
+                sb.AppendLine($"select elem.value as {alias}");
+                sb.Append($"from table(flatten(input => parse_json('{json.Replace("'", "''")}'):{path}{index}{rec})) as elem;");
             }
             else
             {
-                sb.AppendLine("-- returns the first JSON object of the first JSON array");
-                sb.AppendLine($"select json:{field}{elem} as {parts[^1]}");
-                sb.Append($"from src;");
+                sb.AppendLine("-- top CTE with one single data entry as an inline JSON object");
+                sb.AppendLine($"with src as (");
+                sb.AppendLine($"  select parse_json('{json.Replace("'", "''")}') as json){(opt.callListAgg ? "," : "")}");
+                sb.AppendLine();
+
+                if (opt.callFlatten && opt.callListAgg)
+                {
+                    sb.AppendLine("-- CTE with one row for each element of the first JSON array");
+                    sb.AppendLine($"arr as (");
+                    sb.AppendLine($"  select elem.value as {alias}");
+                    sb.AppendLine($"  from src,");
+                    sb.AppendLine($"    lateral flatten(input => json:{path}{index}{rec}) as elem)");
+                    sb.AppendLine();
+
+                    sb.AppendLine("-- LISTAGG combines all rows in a single comma-separated list");
+                    sb.AppendLine($"select '[ ' || listagg({alias}, ', ') || ' ]' as agg");
+                    sb.Append($"from arr;");
+                }
+                else if (opt.callFlatten && opt.twoArrays)
+                {
+                    // find second array, with path
+                    var array2 = GetFirstArray(array, array) as JArray;
+                    if (array2 == null)
+                        return "-- [ERROR] must use JSON with at least two nested arrays!";
+
+                    var path2 = MakePath(array2.Path, path.Split('.').Length);
+                    var alias2 = path2.Split('.')[^1];
+
+                    sb.AppendLine("-- returns one row for each element of the first two JSON arrays");
+                    sb.AppendLine($"select elem.value as {alias}, elem2.value as {alias2}");
+                    sb.AppendLine($"from src,");
+                    sb.AppendLine($"  lateral flatten(input => json:{path}{rec}) as elem,");
+                    sb.Append($"  lateral flatten(input => elem.value:{path2}{rec}) as elem2;");
+                }
+                else if (opt.callFlatten)
+                {
+                    sb.AppendLine("-- returns one row for each element of the first JSON array");
+                    sb.AppendLine($"select elem.value as {alias}");
+                    sb.AppendLine($"from src,");
+                    sb.Append($"  lateral flatten(input => json:{path}{index}{rec}) as elem;");
+                }
+                else if (opt.retProperty)
+                {
+                    var propName = $"\"{(array[0] as JObject).Properties().ToList()[0].Name}\"";
+                    sb.AppendLine("-- returns the first property value of the first JSON object of the first JSON array");
+                    sb.AppendLine($"select json:{path}{index}.{propName} as {propName}");
+                    sb.Append($"from src;");
+                }
+                else
+                {
+                    sb.AppendLine("-- returns the first JSON object of the first JSON array");
+                    sb.AppendLine($"select json:{path}{index} as {alias}");
+                    sb.Append($"from src;");
+                }
             }
             return sb.ToString();
         }
 
         // find first JArray array
-        private JToken GetFirstArray(JToken token)
+        private JToken GetFirstArray(JToken token, JToken skip = null)
         {
-            JToken tok;
-            if (token is JArray)
+            if (token != skip && token is JArray)
                 return token;
-            else if (token is JProperty prop
-                && (tok = GetFirstArray(prop.Value)) != null)
+
+            JToken tok;
+            if (token is JProperty prop
+                && (tok = GetFirstArray(prop.Value, skip)) != null)
                 return tok;
             else if (token is JObject obj)
                 foreach (var property in obj.Properties())
-                    if ((tok = GetFirstArray(property)) != null)
+                {
+                    if ((tok = GetFirstArray(property, skip)) != null)
                         return tok;
+                }
+            else if (token is JArray arr)
+                for (var i = 0; i < arr.Count; i++)
+                {
+                    if ((tok = GetFirstArray(arr[i], skip)) != null)
+                        return tok;
+                }
             return null;
         }
     }

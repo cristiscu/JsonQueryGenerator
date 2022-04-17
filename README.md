@@ -30,3 +30,6 @@ Generated Query Types
 * **First array object property** - Returns the first JSON array object property (if any) from the input data. This is to demo using the dot notation for properties.  
 * **LATERAL FLATTEN first array** - Generates a query that will return one row for each individual object of the first JSON array found. This is to demo the LATERAL and FLATTEN constructs.  
 * **LATERAL FLATTEN first array + LISTAGG to combine back** - Generates a query that will return one row for each individual object of the first JSON array found, like before. But then uses LISTAGG to collapse these individual rows into a single array. This will demo both expanding (into rows) and collapsing back (rows to content).  
+* **LATERAL FLATTEN first two arrays** - Flattens elements of the first two nested arrays. This shows how to call LATERAL FLATTEN twice in the same query.  
+* **TABLE FLATTEN first array** - Like LATERAL FLATTEN, but use TABLE when you provide a nested PARSE_JSON call.  
+* **TABLE FLATTEN first array RECURSIVE** - Like TABLE FLATTEN for the first array, but with recursive parameter TRUE. This will eventually return more rows, going down into each property value.  

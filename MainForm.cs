@@ -69,7 +69,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
             txtJsonOut.Text = "";
             WriteStatus();
 
-            if (string.IsNullOrEmpty(query))
+            if (string.IsNullOrEmpty(query)
+                || query.Contains("[ERROR]"))
                 return;
 
             // (try to) run SQL query

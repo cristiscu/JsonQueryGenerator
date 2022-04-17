@@ -9,9 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="files\Car Owners.json" />
     <None Remove="files\Custom Attributes.json" />
     <None Remove="files\Person Profile.json" />
+    <None Remove="files\Vehicle Sales.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="files\Car Owners.json">
+    <Content Include="files\Vehicle Sales.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="files\Custom Attributes.json">
