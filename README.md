@@ -26,7 +26,8 @@ Generated Query Types
 * **Single OBJECT_CONSTRUCT with PARSE_JSON** - Generates a "SELECT object_construct(...)" query for the top JSON object. All other child objects are created with PARSE_JSON(...) calls. This is to briefly demo the OBJECT_CONSTRUCT and avoid too much clutter.  
 * **Multiple OBJECT_CONSTRUCT with ARRAY_CONSTRUCT_COMPACT** - Generates a "SELECT object_construct(...)" query for all JSON objects. Arrays are created with ARRAY_CONSTRUCT_COMPACT calls (no NULLs). This is to demonstrate how to fully create any JSON object from individual elements (properties with values).  
 * **Multiple OBJECT_CONSTRUCT_KEEP_NULL with ARRAY_CONSTRUCT** - Generates a "SELECT object_construct_keep_null(...)" query for all JSON objects. Arrays are created with ARRAY_CONSTRUCT calls (keep NULLs). This is to demonstrate how to fully create any JSON object from individual elements (properties with values).  
-* **First array** - Returns only the first JSON array from the input data. This is to demo how to address to a nested JSON element.  
+* **First array** - Returns only the first JSON array from the input data. This is to demo how to address a nested JSON element.  
+* **First value array** - Returns only the first JSON array with individual values (not objects) from the input data. This is to demo how to address a nested JSON element.  
 * **First array object** - Returns the first JSON array object (if any) from the input data. This is to demo the : notation for nested objects.  
 * **First array object property** - Returns the first JSON array object property (if any) from the input data. This is to demo using the dot notation for properties.  
 * **LATERAL FLATTEN first array** - Generates a query that will return one row for each individual object of the first JSON array found. This is to demo the LATERAL and FLATTEN constructs.  
