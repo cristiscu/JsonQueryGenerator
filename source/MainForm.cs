@@ -101,17 +101,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
             // auto-select first JSON objects from first row
             if (lvwResults.Items.Count > 0)
             {
-                var item = lvwResults.Items[0];
-                item.Selected = true;
-                for (var i = 0; i < item.SubItems.Count; i++)
-                {
-                    var text = item.SubItems[i].Text;
-                    if (text.StartsWith("{") || text.StartsWith("["))
-                    {
-                        ShowResultJson(text);
-                        break;
-                    }
-                }
+                lvwResults.Items[0].Selected = true;
+                ShowResultJson(lvwResults.Items[0].Text);
             }
         }
 
@@ -151,12 +142,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
         }
         private void ShowResultJson(string json)
         {
-            try
-            {
-                txtJsonOut.Text = json.StartsWith("{") || json.StartsWith("[")
-                    ? JToken.Parse(json).ToString(Formatting.Indented) : "";
-            }
-            catch { txtJsonOut.Text = ""; }
+            try { txtJsonOut.Text = JToken.Parse(json).ToString(Formatting.Indented); }
+            catch { txtJsonOut.Text = json; }
         }
     }
 }

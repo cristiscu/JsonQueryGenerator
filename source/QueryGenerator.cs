@@ -9,6 +9,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
         public static readonly string[] QueryTypes = new[] {
             "(select a query type)",
             "Single PARSE_JSON",
+            "Single PARSE_JSON check types",
+            "Single PARSE_JSON conversions",
             "Single OBJECT_CONSTRUCT with PARSE_JSON",
             "Multiple OBJECT_CONSTRUCT with ARRAY_CONSTRUCT_COMPACT",
             "Multiple OBJECT_CONSTRUCT_KEEP_NULL with ARRAY_CONSTRUCT",
@@ -29,19 +31,21 @@ namespace XtractPro.Utils.JsonQueryGenerator
         public string GetQuery(string json, string queryType)
             => string.IsNullOrEmpty(json) ? "-- [ERROR] must use non-empty JSON!"
             : queryType == QueryTypes[1] ? GetSingleParseJsonQuery(json, new QueryOptions())
-            : queryType == QueryTypes[2] ? GetSingleObjectConstructQuery(JToken.Parse(json), new QueryOptions())
-            : queryType == QueryTypes[3] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions())
-            : queryType == QueryTypes[4] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions() { keepNulls = true })
-            : queryType == QueryTypes[5] ? GetArrayQuery(json, new QueryOptions())
-            : queryType == QueryTypes[6] ? GetArrayQuery(json, new QueryOptions() { hasValues = true })
-            : queryType == QueryTypes[7] ? GetArrayQuery(json, new QueryOptions() { retElement = true })
-            : queryType == QueryTypes[8] ? GetArrayQuery(json, new QueryOptions() { retElement = true, retProperty = true })
-            : queryType == QueryTypes[9] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true })
-            : queryType == QueryTypes[10] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callArrayAgg = true })
-            : queryType == QueryTypes[11] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, twoArrays = true })
-            : queryType == QueryTypes[12] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true })
-            : queryType == QueryTypes[13] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useNested = true })
-            : queryType == QueryTypes[14] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useRecursive = true })
+            : queryType == QueryTypes[2] ? GetTypesQuery(json, new QueryOptions() { checkTypes = true })
+            : queryType == QueryTypes[3] ? GetTypesQuery(json, new QueryOptions())
+            : queryType == QueryTypes[4] ? GetSingleObjectConstructQuery(JToken.Parse(json), new QueryOptions())
+            : queryType == QueryTypes[5] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions())
+            : queryType == QueryTypes[6] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions() { keepNulls = true })
+            : queryType == QueryTypes[7] ? GetArrayQuery(json, new QueryOptions())
+            : queryType == QueryTypes[8] ? GetArrayQuery(json, new QueryOptions() { hasValues = true })
+            : queryType == QueryTypes[9] ? GetArrayQuery(json, new QueryOptions() { retElement = true })
+            : queryType == QueryTypes[10] ? GetArrayQuery(json, new QueryOptions() { retElement = true, retProperty = true })
+            : queryType == QueryTypes[11] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true })
+            : queryType == QueryTypes[12] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callArrayAgg = true })
+            : queryType == QueryTypes[13] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, twoArrays = true })
+            : queryType == QueryTypes[14] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true })
+            : queryType == QueryTypes[15] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useNested = true })
+            : queryType == QueryTypes[16] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useRecursive = true })
             : "-- [ERROR] query type not found!";
 
         private string GetSingleParseJsonQuery(string json, QueryOptions opt)
@@ -69,7 +73,21 @@ namespace XtractPro.Utils.JsonQueryGenerator
                     sb.Append(property.Value is JValue value
                         ? $"{opt.ToSqlValue(value)}" : $"parse_json('{property.Value}')");
                 }
-            sb.Append(") as json;");
+            else if (token is JArray array)
+                for (var i = 0; i < array.Count; i++)
+                {
+                    if (sb.Length == 0)
+                    {
+                        sb.AppendLine("-- creates a single JSON object only from properties");
+                        sb.AppendLine($"select {opt.getArrayConstruct()}(");
+                    }
+                    else
+                        sb.AppendLine(",");
+                    sb.Append(array[i] is JValue value
+                        ? $"  {opt.ToSqlValue(value)}" : $"  parse_json('{array[i]}')");
+                }
+
+            sb.Append(") as v;");
             return sb.ToString();
         }
 
@@ -110,7 +128,32 @@ namespace XtractPro.Utils.JsonQueryGenerator
                 }
 
             sb.Append(')');
-            if (level.Length == 0) sb.Append(" as json;");
+            if (level.Length == 0) sb.Append(" as v;");
+            return sb.ToString();
+        }
+
+        private string GetTypesQuery(string json, QueryOptions opt)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine(opt.checkTypes ? "-- check data types on JSON string" : "-- conversions on JSON data");
+            sb.AppendLine($"with src as (");
+            sb.AppendLine($"  select parse_json('{json.Replace("'", "''")}') as v)");
+            sb.AppendLine();
+
+            if (opt.checkTypes)
+            {
+                sb.AppendLine($"select typeof(v), SYSTEM$TYPEOF(v),");
+                sb.AppendLine($"  SYSTEM$TYPEOF(to_variant(v)), SYSTEM$TYPEOF(to_json(v)),");
+                sb.AppendLine($"  is_object(v), is_array(v)");
+                sb.Append($"from src;");
+            }
+            else
+            {
+                sb.AppendLine($"select to_object(v), as_object(v),");
+                sb.AppendLine($"  to_array(v), as_array(v),");
+                sb.AppendLine($"  to_json(v), to_xml(v)");
+                sb.Append($"from src;");
+            }
             return sb.ToString();
         }
 
@@ -145,7 +188,7 @@ namespace XtractPro.Utils.JsonQueryGenerator
             {
                 sb.AppendLine("-- top CTE with one single data entry as an inline JSON object");
                 sb.AppendLine($"with src as (");
-                sb.AppendLine($"  select parse_json('{json.Replace("'", "''")}') as json){(opt.callArrayAgg ? "," : "")}");
+                sb.AppendLine($"  select parse_json('{json.Replace("'", "''")}') as v){(opt.callArrayAgg ? "," : "")}");
                 sb.AppendLine();
 
                 if (opt.callFlatten && opt.callArrayAgg)
@@ -155,8 +198,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
                     sb.AppendLine($"  select elem.value as {alias}");
                     sb.AppendLine($"  from src,");
                     sb.AppendLine(opt.callTable
-                        ? $"    table(flatten(input => json:{path}{index}{rec})) as elem)"
-                        : $"    lateral flatten(input => json:{path}{index}{rec}) as elem)");
+                        ? $"    table(flatten(input => v:{path}{index}{rec})) as elem)"
+                        : $"    lateral flatten(input => v:{path}{index}{rec}) as elem)");
                     sb.AppendLine();
 
                     sb.AppendLine("-- ARRAY_AGG and LISTAGG combine row array elements into a single array");
@@ -178,8 +221,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
                     sb.AppendLine($"select elem.value as {alias}, elem2.value as {alias2}");
                     sb.AppendLine($"from src,");
                     sb.AppendLine(opt.callTable
-                        ? $"  table(flatten(input => json:{path}{rec})) as elem,"
-                        : $"  lateral flatten(input => json:{path}{rec}) as elem,");
+                        ? $"  table(flatten(input => v:{path}{rec})) as elem,"
+                        : $"  lateral flatten(input => v:{path}{rec}) as elem,");
                     sb.Append(opt.callTable
                         ? $"  table(flatten(input => elem.value:{path2}{rec})) as elem2;"
                         : $"  lateral flatten(input => elem.value:{path2}{rec}) as elem2;");
@@ -190,28 +233,32 @@ namespace XtractPro.Utils.JsonQueryGenerator
                     sb.AppendLine($"select elem.value as {alias}");
                     sb.AppendLine($"from src,");
                     sb.Append(opt.callTable
-                        ? $"  table(flatten(input => json:{path}{index}{rec})) as elem;"
-                        : $"  lateral flatten(input => json:{path}{index}{rec}) as elem;");
+                        ? $"  table(flatten(input => v:{path}{index}{rec})) as elem;"
+                        : $"  lateral flatten(input => v:{path}{index}{rec}) as elem;");
                 }
                 else if (opt.retProperty)
                 {
                     var prop = (array[0] as JObject).Properties().ToList()[0];
                     var type = prop.Value.Type == JTokenType.String ? "::string" : "";
-                    var altNotation = opt.GetAltNotation($"json:{path}{index}.\"{prop.Name}\"");
+                    var altNotation = opt.GetAltNotation($"v:{path}{index}.\"{prop.Name}\"");
 
                     sb.AppendLine("-- returns the first property value of the first JSON object of the first JSON array");
-                    sb.AppendLine($"select json:{path}{index}.\"{prop.Name}\"{type} as \"{prop.Name}\",");
+                    sb.AppendLine($"select v:{path}{index}.\"{prop.Name}\"{type} as \"{prop.Name}\",");
                     sb.AppendLine($"  {altNotation}{type} as \"{prop.Name}\"");
                     sb.Append($"from src;");
                 }
                 else if (opt.retElement)
                 {
-                    var altNotation = opt.GetAltNotation($"json:{path}{index}");
+                    var altNotation = opt.GetAltNotation($"v:{path}{index}");
+                    var key = (array[0] as JObject)?.Properties().FirstOrDefault()?.Name;
 
                     sb.AppendLine("-- returns the first element in the first JSON array");
-                    sb.AppendLine($"select json:{path}{index} as {alias},");
+                    sb.AppendLine($"select v:{path}{index} as {alias},");
                     sb.AppendLine($"  {altNotation} as {alias},");
-                    sb.AppendLine($"  object_keys(json:{path}{index}) as object_keys");
+                    sb.AppendLine($"  get(v:{path}, 0) as get,");
+                    if (!string.IsNullOrEmpty(key))
+                        sb.AppendLine($"  object_pick(v:{path}{index}, '{key}') as object_pick,");
+                    sb.AppendLine($"  object_keys(v:{path}{index}) as object_keys");
                     sb.Append($"from src;");
                 }
                 else
@@ -219,9 +266,10 @@ namespace XtractPro.Utils.JsonQueryGenerator
                     var slice = (array.Count >= 1 ? array.Count - 1 : array.Count);
 
                     sb.AppendLine("-- returns the first JSON array");
-                    sb.AppendLine($"select json:{path} as {alias},");
-                    sb.AppendLine($"  array_size(json:{path}) as array_size,");
-                    sb.AppendLine($"  array_slice(json:{path}, 0, {slice}) as array_slice");
+                    sb.AppendLine($"select v:{path} as {alias},");
+                    sb.AppendLine($"  array_size(v:{path}) as array_size,");
+                    sb.AppendLine($"  array_slice(v:{path}, 0, {slice}) as array_slice,");
+                    sb.AppendLine($"  array_to_string(v:{path}, ' ###### ') as array_to_string");
                     sb.Append($"from src;");
                 }
             }

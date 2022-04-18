@@ -129,7 +129,7 @@ namespace XtractPro.Utils.JsonQueryGenerator
             this.tabJsonInPage.Name = "tabJsonInPage";
             this.tabJsonInPage.Size = new System.Drawing.Size(356, 639);
             this.tabJsonInPage.TabIndex = 1;
-            this.tabJsonInPage.Text = "JSON In";
+            this.tabJsonInPage.Text = "Data";
             this.tabJsonInPage.UseVisualStyleBackColor = true;
             // 
             // txtJsonIn
@@ -282,7 +282,7 @@ namespace XtractPro.Utils.JsonQueryGenerator
             this.tabJsonOutPage.Name = "tabJsonOutPage";
             this.tabJsonOutPage.Size = new System.Drawing.Size(303, 284);
             this.tabJsonOutPage.TabIndex = 1;
-            this.tabJsonOutPage.Text = "JSON Out";
+            this.tabJsonOutPage.Text = "Viewer";
             this.tabJsonOutPage.UseVisualStyleBackColor = true;
             // 
             // txtJsonOut
