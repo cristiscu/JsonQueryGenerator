@@ -23,8 +23,9 @@ Generated Query Types
 ---------------------
 
 * **Single PARSE_JSON** - Generates a simple "SELECT parse_json(...)" query with the JSON loaded content. This is typically used to prepare input JSON data on-the-fly, not stored in the database.  
-* **Single PARSE_JSON check types** - Check type of semi-structured data passed in through PARSE_JSON.  
-* **Single PARSE_JSON conversions** - Convert semi-structured data to different other compatible types.  
+* **CHECK_JSON syntax** - Verifies if text has a correct JSON syntax.  
+* **JSON check types** - Check type of semi-structured data passed in through PARSE_JSON.  
+* **JSON conversions** - Convert semi-structured data to different other compatible types.  
 * **Single OBJECT_CONSTRUCT with PARSE_JSON** - Generates a "SELECT object_construct(...)" query for the top JSON object. All other child objects are created with PARSE_JSON(...) calls. This is to briefly demo the OBJECT_CONSTRUCT and avoid too much clutter.  
 * **Multiple OBJECT_CONSTRUCT with ARRAY_CONSTRUCT_COMPACT** - Generates a "SELECT object_construct(...)" query for all JSON objects. Arrays are created with ARRAY_CONSTRUCT_COMPACT calls (no NULLs). This is to demonstrate how to fully create any JSON object from individual elements (properties with values).  
 * **Multiple OBJECT_CONSTRUCT_KEEP_NULL with ARRAY_CONSTRUCT** - Generates a "SELECT object_construct_keep_null(...)" query for all JSON objects. Arrays are created with ARRAY_CONSTRUCT calls (keep NULLs). This is to demonstrate how to fully create any JSON object from individual elements (properties with values).  

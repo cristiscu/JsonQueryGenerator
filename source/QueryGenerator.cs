@@ -9,8 +9,9 @@ namespace XtractPro.Utils.JsonQueryGenerator
         public static readonly string[] QueryTypes = new[] {
             "(select a query type)",
             "Single PARSE_JSON",
-            "Single PARSE_JSON check types",
-            "Single PARSE_JSON conversions",
+            "CHECK_JSON syntax",
+            "JSON check types",
+            "JSON conversions",
             "Single OBJECT_CONSTRUCT with PARSE_JSON",
             "Multiple OBJECT_CONSTRUCT with ARRAY_CONSTRUCT_COMPACT",
             "Multiple OBJECT_CONSTRUCT_KEEP_NULL with ARRAY_CONSTRUCT",
@@ -31,28 +32,37 @@ namespace XtractPro.Utils.JsonQueryGenerator
         public string GetQuery(string json, string queryType)
             => string.IsNullOrEmpty(json) ? "-- [ERROR] must use non-empty JSON!"
             : queryType == QueryTypes[1] ? GetSingleParseJsonQuery(json, new QueryOptions())
-            : queryType == QueryTypes[2] ? GetTypesQuery(json, new QueryOptions() { checkTypes = true })
-            : queryType == QueryTypes[3] ? GetTypesQuery(json, new QueryOptions())
-            : queryType == QueryTypes[4] ? GetSingleObjectConstructQuery(JToken.Parse(json), new QueryOptions())
-            : queryType == QueryTypes[5] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions())
-            : queryType == QueryTypes[6] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions() { keepNulls = true })
-            : queryType == QueryTypes[7] ? GetArrayQuery(json, new QueryOptions())
-            : queryType == QueryTypes[8] ? GetArrayQuery(json, new QueryOptions() { hasValues = true })
-            : queryType == QueryTypes[9] ? GetArrayQuery(json, new QueryOptions() { retElement = true })
-            : queryType == QueryTypes[10] ? GetArrayQuery(json, new QueryOptions() { retElement = true, retProperty = true })
-            : queryType == QueryTypes[11] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true })
-            : queryType == QueryTypes[12] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callArrayAgg = true })
-            : queryType == QueryTypes[13] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, twoArrays = true })
-            : queryType == QueryTypes[14] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true })
-            : queryType == QueryTypes[15] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useNested = true })
-            : queryType == QueryTypes[16] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useRecursive = true })
+            : queryType == QueryTypes[2] ? GetSingleParseJsonQuery(json, new QueryOptions() { checkTypes = true })
+            : queryType == QueryTypes[3] ? GetTypesQuery(json, new QueryOptions() { checkTypes = true })
+            : queryType == QueryTypes[4] ? GetTypesQuery(json, new QueryOptions())
+            : queryType == QueryTypes[5] ? GetSingleObjectConstructQuery(JToken.Parse(json), new QueryOptions())
+            : queryType == QueryTypes[6] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions())
+            : queryType == QueryTypes[7] ? GetMultiObjectConstructQuery(JToken.Parse(json), new QueryOptions() { keepNulls = true })
+            : queryType == QueryTypes[8] ? GetArrayQuery(json, new QueryOptions())
+            : queryType == QueryTypes[9] ? GetArrayQuery(json, new QueryOptions() { hasValues = true })
+            : queryType == QueryTypes[10] ? GetArrayQuery(json, new QueryOptions() { retElement = true })
+            : queryType == QueryTypes[11] ? GetArrayQuery(json, new QueryOptions() { retElement = true, retProperty = true })
+            : queryType == QueryTypes[12] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true })
+            : queryType == QueryTypes[13] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callArrayAgg = true })
+            : queryType == QueryTypes[14] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, twoArrays = true })
+            : queryType == QueryTypes[15] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true })
+            : queryType == QueryTypes[16] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useNested = true })
+            : queryType == QueryTypes[17] ? GetArrayQuery(json, new QueryOptions() { callFlatten = true, callTable = true, useRecursive = true })
             : "-- [ERROR] query type not found!";
 
         private string GetSingleParseJsonQuery(string json, QueryOptions opt)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("-- creates a single JSON object with a PARSE_JSON call");
-            sb.Append($"select parse_json('{json.Replace("'", "''")}') as json;");
+            if (opt.checkTypes)
+            {
+                sb.AppendLine("-- check correct JSON syntax with a CHECK_JSON call");
+                sb.Append($"select check_json('{json.Replace("'", "''")}') as v;");
+            }
+            else
+            {
+                sb.AppendLine("-- creates a single JSON object with a PARSE_JSON call");
+                sb.Append($"select parse_json('{json.Replace("'", "''")}') as v;");
+            }
             return sb.ToString();
         }
         
