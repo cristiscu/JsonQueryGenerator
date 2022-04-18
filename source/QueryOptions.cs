@@ -18,6 +18,8 @@ namespace XtractPro.Utils.JsonQueryGenerator
         public bool keepNulls { get; set; }
         public bool hasValues { get; set; }
         public bool checkTypes { get; set; }
+        public bool fromString { get; set; }
+        public bool toNameValue { get; set; }
 
         public string getObjectConstruct()
             => keepNulls ? "object_construct_keep_null" : "object_construct";
